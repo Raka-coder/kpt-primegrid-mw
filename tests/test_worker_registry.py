@@ -6,9 +6,7 @@ from primegrid.master.worker_registry import WorkerRegistry
 
 
 def make_registry() -> WorkerRegistry:
-    return WorkerRegistry(
-        MasterConfig(heartbeat_interval=1.0, worker_dead_after=2.0)
-    )
+    return WorkerRegistry(MasterConfig(heartbeat_interval=1.0, worker_dead_after=2.0))
 
 
 def test_register_upserts_by_worker_id() -> None:

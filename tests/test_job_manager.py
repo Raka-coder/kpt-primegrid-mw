@@ -115,9 +115,7 @@ def test_requeued_chunk_cannot_be_completed_by_stale_lease() -> None:
     assert new_assignment is not None
 
     assert manager.release_failure(old_assignment, "stale failure") == "ignored"
-    assert manager.accept_result(
-        new_assignment, prime_count=4, max_prime=7, compute_ms=5
-    )
+    assert manager.accept_result(new_assignment, prime_count=4, max_prime=7, compute_ms=5)
     assert job.status == pb.JOB_STATUS_COMPLETED
     assert job.prime_count == 4
 
