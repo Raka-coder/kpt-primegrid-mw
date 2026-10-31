@@ -83,20 +83,29 @@ primegrid/
 
 ## Instalasi manual
 
+Jalankan dari folder root repo, bukan dari `src`. Ganti `C:\primegrid`
+dengan lokasi clone Anda.
+
 ```powershell
+cd C:\primegrid
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements-dev.txt
 python scripts/generate_proto.py
+python -m pip install -e .
+```
+
+Langkah `python -m pip install -e .` wajib agar perintah
+`python -m primegrid.master`, `python -m primegrid.worker`, dan
+`python -m primegrid.client` dapat dijalankan. Jika tidak ingin memasang
+secara editable, jalankan dari root repo dengan:
+
+```powershell
+$env:PYTHONPATH = "src"
 ```
 
 Di Linux/macOS gunakan `source .venv/bin/activate` dan `python` sebagai ganti
-launcher Windows. Memasang paket dalam mode editable membuat console script
-tersedia:
-
-```powershell
-python -m pip install -e .
-```
+launcher Windows.
 
 ## Menjalankan manual di dua laptop
 

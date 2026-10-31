@@ -197,6 +197,14 @@ python scripts/generate_proto.py
 python -m pip install -e .
 ```
 
+Catatan penting: jalankan perintah dari folder root repo, bukan dari `src`.
+Jika muncul `No module named primegrid` atau `No module named src.master`,
+pastikan:
+- Anda berada di folder root repo (`C:\primegrid` atau `C:\master-worktree`);
+- virtual environment aktif;
+- `python -m pip install -e .` sudah dijalankan;
+- atau set `$env:PYTHONPATH = "src"` untuk sesi PowerShell tersebut.
+
 Verifikasi entry point:
 
 ```powershell
@@ -500,6 +508,7 @@ File hasil:
 | Koneksi hanya satu arah | AP isolation atau profil Public | Matikan AP isolation, ubah profil ke Private, buka kedua port |
 | Job `FAILED` setelah worker mati | Tidak ada worker lain | Jalankan minimal dua worker untuk uji failover |
 | Job `trial` 10 juta lambat | Trial division near-10M mahal | Gunakan `sieve`, atau uji `trial` dengan rentang lebih kecil |
+| `No module named primegrid` | Belum install editable atau salah folder | Jalankan dari root repo, lalu `python -m pip install -e .` atau `$env:PYTHONPATH = "src"` |
 | `ping` gagal | Beda jaringan/subnet | Samakan Wi-Fi, cek IP dan gateway |
 
 Perintah diagnosa cepat:
