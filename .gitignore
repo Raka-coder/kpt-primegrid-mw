@@ -12,9 +12,8 @@ htmlcov/
 .superpowers/
 .env
 *.log
-results/*.csv
-results/*.png
 
 # Build
 build/
 dist/
+results/logs/
