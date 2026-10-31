@@ -25,7 +25,7 @@ Aturan ini mengikat semua anggota kelompok dan alat bantu (termasuk asisten AI) 
 | Dependensi runtime | Hanya `grpcio` dan `grpcio-tools`; selebihnya pustaka standar |
 | Dependensi pengembangan | `pytest`; `matplotlib` hanya untuk membuat grafik (di folder `bench/`) |
 | Dependensi tak terikat | Semua versi dipatok di `requirements.txt` |
-| Lingkungan | Virtual environment; container untuk demo |
+| Lingkungan | Virtual environment; dua laptop fisik untuk demo |
 | Penambahan pustaka baru | Harus disepakati kelompok dan dicatat alasannya |
 
 ## 3. Aturan Desain `.proto`
@@ -148,7 +148,7 @@ Format berkas:
 ## 11. Aturan Demo
 
 Urutan demo yang disarankan (≤ 5 menit untuk video):
-1. Tunjukkan topologi: ≥ 2 container/komputer berjalan, `ListWorkers` menampilkan 3 worker.
+1. Tunjukkan topologi: ≥ 2 laptop berjalan, `ListWorkers` menampilkan worker yang terdaftar.
 2. Jalankan job 1–10.000.000, tunjukkan progres lewat `WatchJob`, hasil = 664.579.
 3. Tunjukkan tabel speedup (1 vs 3 worker).
 4. Matikan satu worker di tengah job; tunjukkan log reassign dan hasil tetap benar.

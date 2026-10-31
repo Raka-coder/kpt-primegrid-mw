@@ -199,21 +199,19 @@ Status code yang boleh di-retry: `DEADLINE_EXCEEDED`, `UNAVAILABLE`. Status sepe
 
 ## 9. Deployment
 
-### 9.1 Topologi demo (memenuhi "≥ 2 container/komputer")
-- 1 container **master**
-- 3 container **worker** (`worker1..3`), dibatasi 1 CPU masing-masing agar pengukuran adil
-- 1 container **client/benchmark**
-- Satu jaringan container buatan sendiri; worker menemukan master lewat nama layanan, master menemukan worker lewat alamat yang dilaporkan saat registrasi
-- Orkestrasi dengan berkas compose yang berjalan di Docker maupun Podman
+### 9.1 Topologi demo (dua laptop fisik)
+- **Laptop A**: master dan client/benchmark.
+- **Laptop B**: satu atau lebih proses worker.
+- Master bind ke `0.0.0.0:50050` agar dapat dijangkau dari LAN.
+- Worker menerima `--master-ip`/`--master-port` atau `PRIMEGRID_MASTER_IP`; IP LAN worker dideteksi otomatis atau diisi dengan `--advertise-host`.
+- Tidak ada container atau Docker Compose; kedua laptop menjalankan proses Python langsung dari virtual environment.
+- Port TCP dibuka di Windows Firewall untuk profil `Private`/`Domain` dan `LocalSubnet`.
 
-### 9.2 Topologi alternatif (2 komputer fisik)
-Master + client di komputer 1; worker di komputer 2 (atau tersebar). Ganti `localhost` dengan IP master dan buka port di firewall.
-
-### 9.3 Port
+### 9.2 Port
 | Komponen | Port |
 |----------|------|
 | Master | 50050 |
-| Worker | 50061, 50062, 50063 (atau satu port yang sama bila tiap worker punya container sendiri) |
+| Worker | 50061, 50062, 50063 (setiap proses worker memakai port sendiri) |
 
 ## 10. Keterbatasan dan Perbaikan yang Diusulkan (untuk bab analisis)
 
@@ -239,7 +237,7 @@ primegrid/
 │   └── client/             # CLI
 ├── bench/                  # skrip skenario A, B, C + pembuat grafik
 ├── tests/                  # uji unit dan integrasi
-├── deploy/                 # Dockerfile, compose
+├── docs/                   # PRD, arsitektur, aturan, demo, pengujian
 ├── docs/                   # PRD, arsitektur, rules, plan, diagram
 └── results/                # CSV hasil ukur dan grafik
 ```

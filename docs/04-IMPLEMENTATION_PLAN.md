@@ -14,7 +14,7 @@ Rujukan: `01-PRD.md`, `02-ARCHITECTURE.md`, `03-RULES.md`.
 | 2 | 2 | Algoritma + worker + master inti (alur dasar) | A (master), B (worker) |
 | 3 | 3 | Job lengkap: streaming, status, registrasi, heartbeat | A, B |
 | 4 | 4 | Concurrency, dedup, timeout/retry, reassign | A, B |
-| 5 | 5 | Containerisasi + uji integrasi + uji konkurensi | C (+ semua) |
+| 5 | 5 | Deployment dua laptop + uji integrasi + uji konkurensi | C (+ semua) |
 | 6 | 6 | Benchmark A, B, C + grafik | C (+ semua) |
 | 7 | 7 | Laporan, README, video demo, pengumpulan | Semua |
 
@@ -134,7 +134,7 @@ Tugas — Toleransi kegagalan (A + B):
 
 ## Fase 5 — Containerisasi dan Pengujian (Hari 5)
 
-**Tujuan:** memenuhi ketentuan 4 (demo di ≥ 2 container/komputer) dan memiliki rangkaian uji otomatis.
+**Tujuan:** memenuhi ketentuan 4 (demo di ≥ 2 laptop) dan memiliki rangkaian uji otomatis.
 
 Tugas — Container (C):
 1. Satu image untuk master/worker/client (entry point dibedakan lewat perintah) dengan versi Python dipatok.
@@ -147,8 +147,8 @@ Tugas — Pengujian (semua):
 6. Jalankan seluruh uji dari mesin bersih (clone baru) untuk memastikan README benar.
 
 **Kriteria selesai:**
-- [ ] Satu perintah compose menjalankan seluruh sistem
-- [ ] Job lintas container menghasilkan 664.579
+- [ ] Dua laptop dapat menjalankan master, worker, dan client
+- [ ] Job lintas laptop menghasilkan 664.579
 - [ ] Seluruh uji otomatis lulus
 - [ ] README terverifikasi di mesin bersih
 
@@ -159,7 +159,7 @@ Tugas — Pengujian (semua):
 **Tujuan:** menghasilkan data untuk rubrik "Analisis kinerja" dan "Concurrency & konsistensi".
 
 Tugas:
-1. Catat spesifikasi mesin dan konfigurasi (jumlah core, RAM, versi Python, batas CPU container, ukuran chunk, mode).
+1. Catat spesifikasi mesin dan konfigurasi (jumlah core, RAM, versi Python, jumlah worker, ukuran chunk, mode).
 2. **Skenario A (speedup):** 1, 2, 3 (+4 bila memungkinkan) worker; rentang 1–10.000.000, mode `trial`; 1 kali pemanasan + minimal 3 ulangan; hitung rata-rata, simpangan baku, speedup, efisiensi.
 3. **Skenario B (client bersamaan):** 1, 5, 20 client; (i) job penuh rentang kecil: latensi rata-rata dan throughput; (ii) `GetJobStatus`: latensi dan throughput. Verifikasi kebenaran tiap hasil.
 4. **Skenario C (kegagalan):** rekam bukti (log/tangkapan layar) untuk tiga kasus PRD.
@@ -199,7 +199,7 @@ Tugas:
 | Aspek rubrik (bobot) | Dipenuhi di fase | Bukti utama |
 |----------------------|------------------|-------------|
 | Desain antarmuka `.proto` (15%) | 1 | `.proto` rapi, 10 RPC, 1 streaming, tinjauan |
-| Fungsionalitas (25%) | 2, 3, 5 | Demo 3 worker lintas container, hasil benar |
+| Fungsionalitas (25%) | 2, 3, 5 | Demo worker lintas laptop, hasil benar |
 | Concurrency & konsistensi (20%) | 4, 5, 6 | Uji 20 client, hasil selalu 664.579 |
 | Toleransi kegagalan (15%) | 4, 6 | Demo worker mati, retry, dedup |
 | Analisis kinerja (15%) | 6 | Tabel, grafik, penjelasan penyebab |

@@ -67,20 +67,21 @@ python -m primegrid.master --host 0.0.0.0 --port 50050
 
 ```powershell
 python -m primegrid.worker `
-    --master 192.168.1.10:50050 `
+    --master-ip 192.168.1.10 --master-port 50050 `
     --host 0.0.0.0 `
     --port 50061 `
-    --advertise-host 192.168.1.20 `
-    --advertise-port 50061 `
     --worker-id laptop-b-1
 ```
+
+Worker mendeteksi IP LAN-nya otomatis. Jika deteksi gagal, tambahkan
+`--advertise-host 192.168.1.20`. Port advertise otomatis mengikuti `--port`.
 
 ## 3. Tunjukkan topologi dua laptop
 
 Dari Laptop A:
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 workers
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 workers
 ```
 
 Hasil yang diharapkan:
@@ -92,7 +93,7 @@ id=laptop-b-1 address=192.168.1.20:50061 ... status=ALIVE
 ## 4. Jalankan job referensi
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 1000000 --chunk-size 100000 --mode sieve `
     --request-id demo-dua-laptop-001
 ```
@@ -100,8 +101,8 @@ python -m primegrid.client --master 192.168.1.10:50050 submit `
 Catat `job_id`, lalu:
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 watch --job-id <job-id>
-python -m primegrid.client --master 192.168.1.10:50050 result --job-id <job-id>
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 watch --job-id <job-id>
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 result --job-id <job-id>
 ```
 
 Hasil yang diharapkan:
@@ -113,7 +114,7 @@ prime_count=78498 max_prime=999983
 Untuk referensi 10 juta:
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 10000000 --chunk-size 100000 --mode sieve `
     --request-id demo-dua-laptop-10m
 ```
@@ -123,10 +124,10 @@ Hasil yang diharapkan: `prime_count=664579` dan `max_prime=9999991`.
 ## 5. Tunjukkan idempotensi
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 100000 --mode sieve --request-id demo-dedup-001
 
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 100000 --mode sieve --request-id demo-dedup-001
 ```
 
@@ -139,11 +140,9 @@ Jalankan worker kedua di Laptop B pada port `50062`:
 
 ```powershell
 python -m primegrid.worker `
-    --master 192.168.1.10:50050 `
+    --master-ip 192.168.1.10 --master-port 50050 `
     --host 0.0.0.0 `
     --port 50062 `
-    --advertise-host 192.168.1.20 `
-    --advertise-port 50062 `
     --worker-id laptop-b-2
 ```
 

@@ -10,10 +10,10 @@ dan pengujian dua laptop fisik melalui Wi-Fi/LAN. Contoh IP yang dipakai:
 
 Ganti IP tersebut dengan hasil `ipconfig` di masing-masing laptop.
 
-> Catatan CLI: panduan ini memakai bentuk yang sudah berjalan sekarang,
-> yaitu `--master <ip>:<port>`. Setelah refactor `--master-ip`,
-> bentuk `--master-ip <ip> --master-port <port>` juga tersedia dan opsi
-> `--master` tetap kompatibel.
+> Catatan CLI: panduan ini memakai bentuk `--master-ip <ip> --master-port <port>`.
+> Bentuk legacy `--master <ip>:<port>` tetap kompatibel, tetapi tidak
+> dianjurkan untuk dokumentasi baru. Tidak ada alamat `localhost` yang menjadi
+> default; alamat master wajib diberikan melalui CLI atau environment.
 
 ## 1. Pengujian otomatis yang sudah tersedia
 
@@ -23,16 +23,16 @@ Jalankan dari root repo:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Hasil terakhir: `54 passed, 1 deselected`.
+Hasil terakhir: `69 passed, 1 deselected`.
 
 Untuk regresi full-range 1 sampai 10.000.000 dengan algoritma `trial`
-(memakan waktu sekitar 95 detik):
+(memakan waktu sekitar 106 detik):
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q -m slow
 ```
 
-Hasil terakhir: `1 passed, 54 deselected`.
+Hasil terakhir: `1 passed, 69 deselected`.
 
 Cakupan tes utama:
 
@@ -45,7 +45,9 @@ Cakupan tes utama:
 | `tests/test_worker_registry.py` | registrasi, heartbeat, worker mati/hidup lagi |
 | `tests/test_algorithms.py` | sieve dan trial terhadap nilai referensi |
 | `tests/test_reference_regression.py` | full-range sieve dan trial 10 juta |
-| `tests/test_config.py` | konfigurasi env dan validasi |
+| `tests/test_config.py` | konfigurasi env, `--master-ip`, validasi alamat |
+| `tests/test_network.py` | parsing alamat dan deteksi IP lokal |
+| `tests/test_cli_options.py` | opsi `--master-ip`/`--master-port` pada CLI |
 | `tests/test_retry.py` | retry hanya untuk error sementara |
 | `tests/test_benchmark_helpers.py` | helper benchmark, CSV, dan environment |
 
@@ -220,7 +222,7 @@ Terminal 2, worker:
 ```powershell
 .\.venv\Scripts\Activate.ps1
 python -m primegrid.worker `
-    --master 127.0.0.1:50050 `
+    --master-ip 127.0.0.1 --master-port 50050 `
     --host 127.0.0.1 `
     --port 50061 `
     --advertise-host 127.0.0.1 `
@@ -233,9 +235,9 @@ Terminal 3, client:
 ```powershell
 .\.venv\Scripts\Activate.ps1
 
-python -m primegrid.client --master 127.0.0.1:50050 workers
+python -m primegrid.client --master-ip 127.0.0.1 --master-port 50050 workers
 
-python -m primegrid.client --master 127.0.0.1:50050 submit `
+python -m primegrid.client --master-ip 127.0.0.1 --master-port 50050 submit `
     --start 1 --end 100000 --chunk-size 10000 --mode sieve `
     --request-id local-test-001
 ```
@@ -243,9 +245,9 @@ python -m primegrid.client --master 127.0.0.1:50050 submit `
 Catat `job_id`, lalu:
 
 ```powershell
-python -m primegrid.client --master 127.0.0.1:50050 status --job-id <job_id>
-python -m primegrid.client --master 127.0.0.1:50050 watch --job-id <job_id>
-python -m primegrid.client --master 127.0.0.1:50050 result --job-id <job_id>
+python -m primegrid.client --master-ip 127.0.0.1 --master-port 50050 status --job-id <job_id>
+python -m primegrid.client --master-ip 127.0.0.1 --master-port 50050 watch --job-id <job_id>
+python -m primegrid.client --master-ip 127.0.0.1 --master-port 50050 result --job-id <job_id>
 ```
 
 Hasil yang diharapkan:
@@ -273,16 +275,15 @@ Wi-Fi/LAN. Jangan mengganti dengan `localhost` untuk mode dua laptop.
 cd C:\primegrid
 .\.venv\Scripts\Activate.ps1
 python -m primegrid.worker `
-    --master 192.168.1.10:50050 `
+    --master-ip 192.168.1.10 --master-port 50050 `
     --host 0.0.0.0 `
     --port 50061 `
-    --advertise-host 192.168.1.20 `
-    --advertise-port 50061 `
     --worker-id laptop-b-1
 ```
 
-`--advertise-host` harus berisi IP Laptop B yang dapat dijangkau Laptop A.
-Jangan memakai `0.0.0.0` atau `localhost` untuk nilai advertise.
+Worker mendeteksi IP LAN-nya otomatis dari rute menuju master. Jika deteksi
+gagal, isi `--advertise-host 192.168.1.20` secara eksplisit. Port advertise
+otomatis mengikuti `--port`; nilainya tidak boleh `0.0.0.0` atau `localhost`.
 
 ### Laptop A, terminal client
 
@@ -290,7 +291,7 @@ Jangan memakai `0.0.0.0` atau `localhost` untuk nilai advertise.
 cd C:\primegrid
 .\.venv\Scripts\Activate.ps1
 
-python -m primegrid.client --master 192.168.1.10:50050 workers
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 workers
 ```
 
 Hasil yang diharapkan:
@@ -307,7 +308,7 @@ ulang jika master belum siap atau koneksi sempat putus.
 Dari Laptop A atau B:
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 1000000 --chunk-size 100000 --mode sieve `
     --request-id dua-laptop-001
 ```
@@ -315,8 +316,8 @@ python -m primegrid.client --master 192.168.1.10:50050 submit `
 Catat `job_id`, lalu jalankan:
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 watch --job-id <job_id>
-python -m primegrid.client --master 192.168.1.10:50050 result --job-id <job_id>
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 watch --job-id <job_id>
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 result --job-id <job_id>
 ```
 
 Hasil yang diharapkan untuk rentang 1.000.000:
@@ -338,10 +339,10 @@ Contoh referensi lengkap:
 Kirim dua kali dengan `request_id` yang sama:
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 100000 --mode sieve --request-id dedup-demo-001
 
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 100000 --mode sieve --request-id dedup-demo-001
 ```
 
@@ -360,30 +361,25 @@ Terminal worker 1:
 
 ```powershell
 python -m primegrid.worker `
-    --master 192.168.1.10:50050 `
+    --master-ip 192.168.1.10 --master-port 50050 `
     --host 0.0.0.0 `
     --port 50061 `
-    --advertise-host 192.168.1.20 `
-    --advertise-port 50061 `
     --worker-id laptop-b-1
-```
 
 Terminal worker 2:
 
 ```powershell
 python -m primegrid.worker `
-    --master 192.168.1.10:50050 `
+    --master-ip 192.168.1.10 --master-port 50050 `
     --host 0.0.0.0 `
     --port 50062 `
-    --advertise-host 192.168.1.20 `
-    --advertise-port 50062 `
     --worker-id laptop-b-2
 ```
 
 Dari Laptop A, submit job yang cukup lama:
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 10000000 --chunk-size 100000 --mode trial `
     --request-id failover-demo-001
 ```
@@ -391,7 +387,7 @@ python -m primegrid.client --master 192.168.1.10:50050 submit `
 Watch job:
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 watch --job-id <job_id>
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 watch --job-id <job_id>
 ```
 
 Saat job berjalan, hentikan worker 1 dengan `Ctrl+C` di terminalnya. Worker 2
@@ -430,11 +426,13 @@ Jalankan di PowerShell 7, dengan worker di Laptop B sudah aktif:
 
 ```powershell
 $python = "C:\primegrid\.venv\Scripts\python.exe"
-$master = "192.168.1.10:50050"
+$masterIp = "192.168.1.10"
+$masterPort = "50050"
 
 $output = 1..20 | ForEach-Object -Parallel {
     $id = "remote-load-$_"
-    & $using:python -m primegrid.client --master $using:master submit `
+    & $using:python -m primegrid.client `
+        --master-ip $using:masterIp --master-port $using:masterPort submit `
         --start 1 --end 100000 --chunk-size 10000 --mode sieve `
         --request-id $id
 } -ThrottleLimit 20
@@ -451,11 +449,13 @@ Tunggu setiap job selesai dan cek hasilnya:
 ```powershell
 foreach ($id in $jobIds) {
     do {
-        $line = & $python -m primegrid.client --master $master status --job-id $id
+        $line = & $python -m primegrid.client `
+            --master-ip $masterIp --master-port $masterPort status --job-id $id
         Start-Sleep -Milliseconds 200
     } until ($line -match "status=(COMPLETED|FAILED|CANCELLED)")
 
-    & $python -m primegrid.client --master $master result --job-id $id |
+    & $python -m primegrid.client `
+        --master-ip $masterIp --master-port $masterPort result --job-id $id |
         Select-String "prime_count=9592"
 }
 ```

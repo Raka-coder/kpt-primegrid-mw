@@ -1,26 +1,26 @@
 # primegrid
 
-`primegrid` is a master-worker prime-counting system built with Python and gRPC. A
-master splits an inclusive range into half-open chunks, dispatches those chunks
-dynamically to any number of workers, verifies each result against known prime
-counts, and streams progress back to clients.
+`primegrid` adalah sistem penghitungan bilangan prima master-worker berbasis
+Python dan gRPC. Master memecah rentang inklusif menjadi chunk half-open,
+mendistribusikannya secara dinamis ke sejumlah worker, memverifikasi setiap
+hasil terhadap jumlah prima yang diketahui, dan mengalirkan progres ke client.
 
-The project implements the requirements in `docs/01-PRD.md`,
-`docs/02-ARCHITECTURE.md`, `docs/03-RULES.md`, and
+Proyek ini mengimplementasikan kebutuhan pada `docs/01-PRD.md`,
+`docs/02-ARCHITECTURE.md`, `docs/03-RULES.md`, dan
 `docs/04-IMPLEMENTATION_PLAN.md`.
 
-## What is implemented
+## Fitur yang diimplementasikan
 
-| Requirement | Implementation |
+| Kebutuhan | Implementasi |
 |---|---|
-| At least 4 RPCs with one streaming RPC | 10 RPCs across `MasterService` and `WorkerService`; `WatchJob` is server streaming |
-| Many concurrent clients without corrupted state | Per-job locks, a thread-safe chunk queue, separate worker/dedup registries, and exactly-once chunk aggregation |
-| Timeout, retry, and request IDs | Deadlines on every outgoing call, bounded exponential backoff for `DEADLINE_EXCEEDED` and `UNAVAILABLE`, and `request_id` deduplication for `SubmitJob` |
-| Demo on at least two devices | Manual LAN/Wi-Fi deployment with the master on Laptop A and one or more workers on Laptop B; see `docs/PENGUJIAN.md` |
-| Benchmark 1/5/20 clients and speedup | Scenario A/B/C orchestrator writes raw CSV files and a plotting script produces PNG charts |
-| Git history | Small, logical commits with conventional prefixes; each team member should commit under their own Git identity |
+| Minimal 4 RPC dengan satu streaming RPC | 10 RPC pada `MasterService` dan `WorkerService`; `WatchJob` adalah server streaming |
+| Banyak client konkuren tanpa state rusak | Lock per job, antrean chunk thread-safe, registry worker/dedup terpisah, dan agregasi chunk exactly-once |
+| Timeout, retry, dan request ID | Deadline pada setiap panggilan keluar, exponential backoff terbatas untuk `DEADLINE_EXCEEDED` dan `UNAVAILABLE`, serta deduplikasi `request_id` pada `SubmitJob` |
+| Demo minimal dua perangkat | Deployment manual LAN/Wi-Fi dengan master di Laptop A dan satu atau lebih worker di Laptop B; lihat `docs/PENGUJIAN.md` |
+| Benchmark 1/5/20 client dan speedup | Orkestrator skenario A/B/C menulis CSV mentah dan skrip plotting menghasilkan grafik PNG |
+| Riwayat Git | Commit kecil dan logis dengan prefiks konvensional; setiap anggota tim sebaiknya melakukan commit dengan identitas Git masing-masing |
 
-## Architecture
+## Arsitektur
 
 ```text
                 +--------------------------------------+
@@ -32,55 +32,56 @@ The project implements the requirements in `docs/01-PRD.md`,
                 +--------------------------------------+
 ```
 
-The master never performs prime computation. Each worker is a separate process
-so CPU-bound work is not limited by the GIL. A worker computes one chunk at a
-time; parallelism comes from running multiple worker processes.
+Master tidak pernah melakukan komputasi bilangan prima. Setiap worker adalah
+proses terpisah sehingga pekerjaan CPU-bound tidak dibatasi GIL. Satu worker
+menghitung satu chunk pada satu waktu; paralelisme diperoleh dari menjalankan
+beberapa proses worker.
 
-### RPC contract
+### Kontrak RPC
 
 `MasterService`:
 
-- `SubmitJob` (unary, idempotent through `request_id`)
+- `SubmitJob` (unary, idempoten melalui `request_id`)
 - `GetJobStatus` (unary)
-- `WatchJob` (server streaming progress)
+- `WatchJob` (server streaming progres)
 - `GetResult` (unary)
-- `CancelJob` (unary, idempotent)
+- `CancelJob` (unary, idempoten)
 - `ListWorkers` (unary)
 - `RegisterWorker` (unary, upsert)
 - `Heartbeat` (unary)
 
 `WorkerService`:
 
-- `ProcessChunk` (unary, pure and retry-safe)
+- `ProcessChunk` (unary, murni dan aman di-retry)
 - `Ping` (unary)
 
-The canonical definition is `proto/primegrid/primegrid.proto`. Generated stubs
-are written into `src/primegrid/` and can always be regenerated.
+Definisi kanonis ada di `proto/primegrid/primegrid.proto`. Stub hasil generate
+ditulis ke `src/primegrid/` dan dapat dibuat ulang kapan saja.
 
-## Repository layout
+## Struktur repositori
 
 ```text
 primegrid/
 ├── proto/primegrid/primegrid.proto
 ├── src/primegrid/
-│   ├── common/          configuration, logging, retry
+│   ├── common/          konfigurasi, logging, retry, helper jaringan
 │   ├── master/          job manager, dispatcher, registry, servicer, server
-│   ├── worker/          algorithms, servicer, registrar, server
-│   └── client/          API, CLI, benchmark orchestrator
-├── tests/               unit, integration, concurrency, failure, regression
-├── bench/               plotting script
-├── results/             raw benchmark CSV and charts
-└── docs/                PRD, architecture, rules, implementation plan, demo and testing guides
+│   ├── worker/          algoritma, servicer, registrar, server
+│   └── client/          API, CLI, orkestrator benchmark
+├── tests/               unit, integrasi, konkurensi, kegagalan, regresi
+├── bench/               skrip plotting
+├── results/             CSV mentah dan grafik benchmark
+└── docs/                PRD, arsitektur, aturan, rencana implementasi, demo, pengujian
 ```
 
-## Prerequisites
+## Prasyarat
 
-- Python 3.10 or newer (verified with Python 3.14.7)
-- `grpcio`, `grpcio-tools`, `pytest`, and optionally `matplotlib`
-- Two Windows laptops on the same Wi-Fi/LAN for the multi-machine demo
-- At least three usable CPU cores for meaningful speedup measurements
+- Python 3.10 atau lebih baru (terverifikasi dengan Python 3.14.7)
+- `grpcio`, `grpcio-tools`, `pytest`, dan opsional `matplotlib`
+- Dua laptop Windows pada Wi-Fi/LAN yang sama untuk demo multi-mesin
+- Minimal tiga core CPU yang dapat dipakai untuk pengukuran speedup yang bermakna
 
-## Manual installation
+## Instalasi manual
 
 ```powershell
 python -m venv .venv
@@ -89,15 +90,15 @@ python -m pip install -r requirements-dev.txt
 python scripts/generate_proto.py
 ```
 
-On Linux/macOS use `source .venv/bin/activate` and `python` instead of the
-Windows launcher. Installing the package in editable mode makes the console
-scripts available:
+Di Linux/macOS gunakan `source .venv/bin/activate` dan `python` sebagai ganti
+launcher Windows. Memasang paket dalam mode editable membuat console script
+tersedia:
 
 ```powershell
 python -m pip install -e .
 ```
 
-## Run manually on two laptops
+## Menjalankan manual di dua laptop
 
 Contoh topologi:
 
@@ -127,25 +128,36 @@ Bind `0.0.0.0` membuat master menerima koneksi dari Wi-Fi/LAN. Jangan memakai
 cd C:\primegrid
 .\.venv\Scripts\Activate.ps1
 python -m primegrid.worker `
-    --master 192.168.1.10:50050 `
+    --master-ip 192.168.1.10 `
+    --master-port 50050 `
     --host 0.0.0.0 `
     --port 50061 `
-    --advertise-host 192.168.1.20 `
-    --advertise-port 50061 `
     --worker-id laptop-b-1
 ```
 
-`--advertise-host` adalah IP Laptop B yang dapat dijangkau master. Nilai ini
-bukan `0.0.0.0` dan bukan `localhost`.
+Worker mendeteksi IP LAN-nya secara otomatis dari rute menuju master. Jika
+deteksi otomatis gagal, isi secara eksplisit dengan IP Laptop B:
+
+```powershell
+python -m primegrid.worker `
+    --master-ip 192.168.1.10 `
+    --master-port 50050 `
+    --port 50061 `
+    --advertise-host 192.168.1.20 `
+    --worker-id laptop-b-1
+```
+
+Nilai `--advertise-host` harus IP Laptop B yang dapat dijangkau master, bukan
+`0.0.0.0` dan bukan `localhost`.
 
 ### Client
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 workers
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 workers
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 1000000 --chunk-size 100000 --mode sieve
-python -m primegrid.client --master 192.168.1.10:50050 watch --job-id <job-id>
-python -m primegrid.client --master 192.168.1.10:50050 result --job-id <job-id>
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 watch --job-id <job-id>
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 result --job-id <job-id>
 ```
 
 Hasil yang diharapkan untuk rentang 1.000.000: `prime_count=78498` dan
@@ -154,13 +166,16 @@ Hasil yang diharapkan untuk rentang 1.000.000: `prime_count=78498` dan
 `SubmitJob` bersifat at-most-once per `request_id`:
 
 ```powershell
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 1000000 --request-id demo-001
-python -m primegrid.client --master 192.168.1.10:50050 submit `
+python -m primegrid.client --master-ip 192.168.1.10 --master-port 50050 submit `
     --start 1 --end 1000000 --request-id demo-001
 ```
 
 Panggilan kedua mengembalikan `job_id` yang sama dengan `deduplicated=true`.
+
+Bentuk lama `--master 192.168.1.10:50050` masih didukung, tetapi
+`--master-ip`/`--master-port` adalah bentuk yang dianjurkan.
 
 ### Firewall Windows
 
@@ -190,7 +205,7 @@ Test-NetConnection 192.168.1.20 -Port 50061
 Panduan lengkap, termasuk dua worker untuk failover, uji 20 client, benchmark,
 dan troubleshooting ada di `docs/PENGUJIAN.md`.
 
-## Tests
+## Tes
 
 ```powershell
 python -m pytest
@@ -203,20 +218,20 @@ terpisah:
 python -m pytest -m slow
 ```
 
-Default tests cover:
+Tes default mencakup:
 
-- chunk coverage, half-open boundaries, and remainder handling
-- both algorithms against PRD reference values
-- concurrent deduplication of `SubmitJob`
-- exactly-once chunk aggregation, requeue, stale leases, cancellation
-- worker registration, stale detection, heartbeat revival
-- three-worker end-to-end job with `WatchJob` streaming
-- 20 concurrent clients with correct results
-- worker loss during a job
-- gRPC status-code mapping
-- full 1-10,000,000 sieve regression (`664,579`, largest prime `9,999,991`)
+- cakupan chunk, batas half-open, dan penanganan sisa pembagian
+- kedua algoritma terhadap nilai referensi PRD
+- deduplikasi `SubmitJob` secara konkuren
+- agregasi chunk exactly-once, requeue, lease basi, pembatalan
+- registrasi worker, deteksi worker mati, kebangkitan melalui heartbeat
+- job end-to-end dengan tiga worker dan streaming `WatchJob`
+- 20 client konkuren dengan hasil yang benar
+- kehilangan worker saat job berjalan
+- pemetaan status code gRPC
+- regresi penuh sieve 1-10.000.000 (`664.579`, prima terbesar `9.999.991`)
 
-The intentionally slow full-range trial-division regression is opt-in:
+Regresi full-range trial-division yang sengaja lambat bersifat opt-in:
 
 ```powershell
 python -m pytest -m slow
@@ -224,8 +239,9 @@ python -m pytest -m slow
 
 ## Benchmark
 
-The benchmark orchestrator launches real master and worker processes. This is
-required because CPU-bound threads in one Python process would share one GIL.
+Orkestrator benchmark menjalankan proses master dan worker sungguhan. Ini
+diperlukan karena thread CPU-bound dalam satu proses Python akan berbagi satu
+GIL.
 
 ```powershell
 primegrid-bench --scenario all `
@@ -238,19 +254,19 @@ primegrid-bench --scenario all `
 python bench/plot_results.py --input results
 ```
 
-Outputs:
+Output:
 
-- `results/scenario_a.csv` - T1/TN, speedup, efficiency, correctness
-- `results/scenario_b_jobs.csv` - client concurrency, job latency/throughput
-- `results/scenario_b_status.csv` - `GetJobStatus` latency/throughput
-- `results/scenario_c.csv` - duplicate submit, worker loss, fault injection
-- `results/scenario_a.png` and `results/scenario_b.png`
-- `results/environment.txt` - host, Python, CPU count, timestamp
+- `results/scenario_a.csv` - T1/TN, speedup, efisiensi, kebenaran
+- `results/scenario_b_jobs.csv` - konkurensi client, latensi/throughput job
+- `results/scenario_b_status.csv` - latensi/throughput `GetJobStatus`
+- `results/scenario_c.csv` - submit duplikat, kehilangan worker, injeksi fault
+- `results/scenario_a.png` dan `results/scenario_b.png`
+- `results/environment.txt` - host, Python, jumlah CPU, timestamp
 
-One warm-up run is discarded and every measured configuration is repeated at
-least three times by default. Speedup is computed against the mean T1 baseline.
+Satu warm-up dibuang dan setiap konfigurasi terukur diulang minimal tiga kali
+secara default. Speedup dihitung terhadap mean baseline T1.
 
-### Quick smoke run
+### Smoke run cepat
 
 ```powershell
 primegrid-bench --scenario A --worker-counts 1,2,3 `
@@ -258,87 +274,93 @@ primegrid-bench --scenario A --worker-counts 1,2,3 `
     --chunk-size 10000 --mode trial --output-dir results/smoke
 ```
 
-### Why speedup is not linear
+### Mengapa speedup tidak linear
 
-The report should discuss all of these:
+Laporan perlu membahas semua hal berikut:
 
-- `trial` chunks near 10,000,000 are more expensive than early chunks, so load
-  balance depends on dynamic dispatch and chunk size.
-- gRPC serialization, queueing, and master bookkeeping are serial overheads
-  (Amdahl's law).
-- The host may have fewer physical cores than logical CPUs.
-- In the two-laptop demo, Worker B may be limited by its physical CPU.
-- Python execution speed and per-process startup are not part of the measured
-  job, but RPC round-trip and scheduling are.
+- Chunk `trial` di dekat 10.000.000 lebih mahal daripada chunk awal, sehingga
+  keseimbangan beban bergantung pada dispatch dinamis dan ukuran chunk.
+- Serialisasi gRPC, antrean, dan pembukuan master adalah overhead serial
+  (hukum Amdahl).
+- Host bisa memiliki core fisik lebih sedikit daripada CPU logis.
+- Pada demo dua laptop, Worker B dapat dibatasi CPU fisiknya.
+- Kecepatan eksekusi Python dan startup per proses tidak termasuk dalam job yang
+  diukur, tetapi round-trip RPC dan penjadwalan termasuk.
 
-## Configuration
+## Konfigurasi
 
-Every operational parameter is environment-driven. See `.env.example` for a
-complete list. Important variables:
+Setiap parameter operasional dikendalikan melalui environment. Lihat
+`.env.example` untuk daftar lengkap. Variabel penting:
 
-| Variable | Default | Purpose |
+| Variabel | Default | Kegunaan |
 |---|---:|---|
-| `PRIMEGRID_MASTER_HOST` | `0.0.0.0` | Master bind address |
-| `PRIMEGRID_MASTER_PORT` | `50050` | Master port |
-| `PRIMEGRID_MASTER_ADDRESS` | `localhost:50050` | Address used by workers/clients |
-| `PRIMEGRID_WORKER_ID` | generated | Unique worker ID |
-| `PRIMEGRID_WORKER_HOST` | `0.0.0.0` | Worker bind address |
-| `PRIMEGRID_WORKER_PORT` | `50061` | Worker bind port |
-| `PRIMEGRID_WORKER_ADVERTISE_HOST` | `localhost` | Address advertised to master |
-| `PRIMEGRID_WORKER_ADVERTISE_PORT` | `50061` | Port advertised to master |
-| `PRIMEGRID_HEARTBEAT_INTERVAL` | `2.0` | Heartbeat interval in seconds |
-| `PRIMEGRID_WORKER_DEAD_AFTER` | `6.0` | Heartbeat age before DEAD |
-| `PRIMEGRID_PROCESS_DEADLINE` | `60.0` | Deadline for `ProcessChunk` |
-| `PRIMEGRID_RPC_DEADLINE` | `3.0` | Deadline for lightweight RPCs |
-| `PRIMEGRID_MAX_RETRIES` | `3` | Maximum attempts for retryable calls |
-| `PRIMEGRID_CHUNK_ATTEMPT_LIMIT` | `3` | Requeue budget before a job fails |
-| `PRIMEGRID_DEFAULT_CHUNK_SIZE` | `100000` | Chunk size when client sends 0 |
-| `PRIMEGRID_DEDUP_TTL` | `3600.0` | `request_id` dedup retention |
-| `PRIMEGRID_FAULT_DELAY_PROBABILITY` | `0.0` | Worker delay injection |
-| `PRIMEGRID_FAULT_DELAY_MAX_MS` | `0` | Maximum injected delay |
-| `PRIMEGRID_FAULT_ERROR_PROBABILITY` | `0.0` | Worker transient failure injection |
+| `PRIMEGRID_MASTER_HOST` | `0.0.0.0` | Alamat bind master |
+| `PRIMEGRID_MASTER_PORT` | `50050` | Port master, juga port default worker/client |
+| `PRIMEGRID_MASTER_IP` | tidak ada | IP/host master untuk worker/client; wajib di laptop lain |
+| `PRIMEGRID_MASTER_ADDRESS` | kosong | Bentuk legacy `host:port`; jika diisi menimpa IP/port |
+| `PRIMEGRID_WORKER_ID` | dibuat otomatis | ID unik worker |
+| `PRIMEGRID_WORKER_HOST` | `0.0.0.0` | Alamat bind worker |
+| `PRIMEGRID_WORKER_PORT` | `50061` | Port bind worker |
+| `PRIMEGRID_WORKER_ADVERTISE_HOST` | kosong | IP LAN yang diiklankan; kosong = deteksi otomatis |
+| `PRIMEGRID_WORKER_ADVERTISE_PORT` | `0` | Port yang diiklankan; `0` = ikuti port bind |
+| `PRIMEGRID_HEARTBEAT_INTERVAL` | `2.0` | Interval heartbeat dalam detik |
+| `PRIMEGRID_WORKER_DEAD_AFTER` | `6.0` | Umur heartbeat sebelum worker dianggap DEAD |
+| `PRIMEGRID_PROCESS_DEADLINE` | `60.0` | Deadline untuk `ProcessChunk` |
+| `PRIMEGRID_RPC_DEADLINE` | `3.0` | Deadline untuk RPC ringan |
+| `PRIMEGRID_MAX_RETRIES` | `3` | Maksimum percobaan untuk panggilan yang dapat di-retry |
+| `PRIMEGRID_CHUNK_ATTEMPT_LIMIT` | `3` | Batas requeue sebelum job gagal |
+| `PRIMEGRID_DEFAULT_CHUNK_SIZE` | `100000` | Ukuran chunk saat client mengirim 0 |
+| `PRIMEGRID_DEDUP_TTL` | `3600.0` | Masa retensi dedup `request_id` |
+| `PRIMEGRID_FAULT_DELAY_PROBABILITY` | `0.0` | Probabilitas injeksi delay worker |
+| `PRIMEGRID_FAULT_DELAY_MAX_MS` | `0` | Delay maksimum yang diinjeksi |
+| `PRIMEGRID_FAULT_ERROR_PROBABILITY` | `0.0` | Probabilitas injeksi kegagalan sementara worker |
 
-CLI flags (`--host`, `--port`, `--master`, `--worker-id`, etc.) override the
-corresponding environment values.
+Flag CLI (`--host`, `--port`, `--master-ip`, `--master-port`, `--worker-id`,
+dan seterusnya) menimpa nilai environment terkait. Tidak ada alamat
+`localhost` yang di-hardcode; worker dan client gagal dengan pesan jelas jika
+alamat master tidak diberikan.
 
-## Concurrency and failure design
+## Desain konkurensi dan kegagalan
 
-- The job registry has a short lock for lookup/creation only.
-- Each job has its own lock and condition variable for progress and aggregation.
-- The worker registry and dedup table have independent locks.
-- The chunk queue is `queue.Queue`, so blocking `get` is safe without a manual
-  lock.
-- No outgoing RPC is made while a master lock is held.
-- A chunk result is accepted only if its `chunk_id` is not already in the job's
-  `done_set`, so retries cannot double-count.
-- Failed worker leases are requeued. A stale result from an earlier lease is
-  harmless because aggregation is keyed by `(job_id, chunk_id)`.
-- `SubmitJob` checks and writes the dedup table while holding its lock, which
-  prevents two simultaneous submissions with the same `request_id` from both
-  creating a job.
-- The health monitor marks stale workers DEAD, requeues their assigned chunks,
-  and lets surviving workers finish the job.
-- A worker heartbeat can revive a DEAD worker; a fresh dispatcher is started.
+- Registry job memakai lock singkat hanya untuk lookup/pembuatan.
+- Setiap job memiliki lock dan condition variable sendiri untuk progres dan
+  agregasi.
+- Registry worker dan tabel dedup memiliki lock yang independen.
+- Antrean chunk adalah `queue.Queue`, sehingga `get` yang memblokir aman tanpa
+  lock manual.
+- Tidak ada RPC keluar yang dilakukan saat lock master dipegang.
+- Hasil chunk diterima hanya jika `chunk_id` belum ada di `done_set` job,
+  sehingga retry tidak menghitung ganda.
+- Lease worker yang gagal akan di-requeue. Hasil basi dari lease sebelumnya
+  tidak berbahaya karena agregasi dikunci oleh `(job_id, chunk_id)`.
+- `SubmitJob` memeriksa dan menulis tabel dedup sambil memegang lock-nya,
+  sehingga dua pengiriman simultan dengan `request_id` yang sama tidak dapat
+  membuat dua job.
+- Health monitor menandai worker basi sebagai DEAD, me-requeue chunk yang
+  ditugaskan, dan membiarkan worker yang masih hidup menyelesaikan job.
+- Heartbeat worker dapat membangkitkan worker DEAD; dispatcher baru akan
+  dijalankan.
 
-## Demo guide
+## Panduan demo
 
-See `docs/DEMO.md` for a five-minute demo sequence, including worker-loss,
-idempotency, retry injection, and the 20-client load test.
+Lihat `docs/DEMO.md` untuk urutan demo lima menit, termasuk kehilangan worker,
+idempotensi, injeksi retry, dan uji beban 20 client.
 
-## Known limitations
+## Keterbatasan yang diketahui
 
-- Master state is in memory. A master restart loses jobs and the dedup table.
-- The master is a single point of failure.
-- Channels use insecure gRPC; TLS/mTLS is not configured.
-- Results contain prime count and maximum prime, not the full prime list.
-- At-most-once submit is guaranteed only for the master process lifetime.
+- State master berada di memori. Restart master menghilangkan job dan tabel
+  dedup.
+- Master adalah single point of failure.
+- Channel gRPC menggunakan koneksi insecure; TLS/mTLS belum dikonfigurasi.
+- Hasil berisi jumlah prima dan prima maksimum, bukan daftar lengkap prima.
+- Jaminan at-most-once submit hanya berlaku selama masa hidup proses master.
 
-These are acceptable for the course scope and are documented in
-`docs/02-ARCHITECTURE.md` section 10.
+Hal-hal ini dapat diterima untuk lingkup mata kuliah dan didokumentasikan pada
+`docs/02-ARCHITECTURE.md` bagian 10.
 
-## Git workflow
+## Alur kerja Git
 
-Use feature/fix branches and small conventional commits (`feat:`, `fix:`,
-`test:`, `docs:`, `chore:`, `bench:`). Configure each team member's own name and
-email before committing so `git shortlog -sn` reflects the real distribution of
-work.
+Gunakan branch fitur/perbaikan dan commit konvensional kecil (`feat:`, `fix:`,
+`test:`, `docs:`, `chore:`, `bench:`). Konfigurasikan nama dan email setiap
+anggota tim sebelum melakukan commit agar `git shortlog -sn` mencerminkan
+distribusi pekerjaan yang sebenarnya.

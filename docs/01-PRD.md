@@ -27,7 +27,7 @@ Sistem juga harus tahan terhadap kegagalan (worker mati, jaringan lambat, permin
 | 1 | `.proto` minimal 4 RPC, ≥ 1 streaming | 9 RPC di 2 service (lihat bagian 6), 1 server streaming (`WatchJob`) | Isi `.proto` + penjelasan tiap RPC di laporan |
 | 2 | Banyak client bersamaan tanpa data rusak | Lock pada state master, antrian chunk thread-safe, agregasi hanya sekali per chunk | Uji beban N client; hasil selalu sama dengan nilai referensi |
 | 3 | Timeout + retry; operasi non-idempoten dilindungi ID permintaan | Deadline di semua panggilan, exponential backoff, `request_id` pada `SubmitJob`, dedup chunk pada master | Log demo retry + tabel idempotensi |
-| 4 | Demo di ≥ 2 komputer / 2 container | Master + 3 worker + client sebagai container terpisah (opsional: 2 laptop fisik) | Video demo + tangkapan layar |
+| 4 | Demo di ≥ 2 laptop | Master + 3 proses worker + client di dua laptop fisik melalui LAN/Wi-Fi | Video demo + tangkapan layar |
 | 5 | Uji kinerja 1, 5, 20 client; hitung speedup | Skenario uji A (speedup) dan B (client bersamaan) | Tabel + grafik + analisis |
 | 6 | Git dengan riwayat commit tiap anggota | Repositori Git, branch per fitur, commit tiap anggota | Tautan repositori, `git shortlog` |
 
@@ -38,7 +38,7 @@ Sistem juga harus tahan terhadap kegagalan (worker mati, jaringan lambat, permin
 | **Client (pengaju job)** | Pengguna / skrip CLI yang meminta penghitungan prima | Memanggil RPC pada master |
 | **Master (koordinator)** | Server yang menerima job, memecah chunk, mendistribusikan, menggabungkan | Server untuk client dan worker; client untuk worker |
 | **Worker** | Server yang menghitung prima untuk satu chunk | Server untuk master; client untuk master saat registrasi/heartbeat |
-| **Operator** | Anggota yang menjalankan demo dan uji kinerja | Menjalankan container, mematikan worker untuk demo kegagalan |
+| **Operator** | Anggota yang menjalankan demo dan uji kinerja | Menjalankan proses master/worker/client, mematikan worker untuk demo kegagalan |
 
 ## 5. Kebutuhan Fungsional
 
@@ -106,7 +106,7 @@ Total **10 RPC**, 1 di antaranya streaming. Penambahan streaming kedua (misalnya
 | NFR-01 | Kebenaran | Hasil selalu sama dengan nilai referensi pada semua uji |
 | NFR-02 | Kinerja | Speedup 3 worker > 1,8× pada beban 1–10.000.000 mode `trial` (target realistis, jelaskan bila tidak tercapai) |
 | NFR-03 | Ketahanan | Job selesai benar walau 1 dari 3 worker dimatikan di tengah proses |
-| NFR-04 | Portabilitas | Seluruh sistem berjalan dengan satu perintah compose dan juga manual dengan venv |
+| NFR-04 | Portabilitas | Seluruh sistem berjalan manual dengan venv di dua laptop; tidak memerlukan Docker |
 | NFR-05 | Keterbacaan | Kode memiliki README, struktur modul jelas, penamaan konsisten |
 | NFR-06 | Observabilitas | Log terstruktur dengan `job_id`, `chunk_id`, `worker_id`, durasi |
 | NFR-07 | Reproduksibilitas | Hasil benchmark bisa diulang dengan skrip dan konfigurasi yang tercatat |
@@ -148,7 +148,7 @@ Prima terbesar ≤ 10.000.000 adalah **9.999.991**.
 ## 10. Kriteria Penerimaan
 
 - [ ] `.proto` ≥ 4 RPC, ada streaming, penamaan konsisten
-- [ ] Semua fitur wajib berjalan di ≥ 2 container/komputer berbeda
+- [ ] Semua fitur wajib berjalan di ≥ 2 laptop berbeda
 - [ ] Hasil 1–10.000.000 = 664.579 pada semua konfigurasi worker dan semua uji beban
 - [ ] Tidak ada race condition, dibuktikan uji beban 20 client
 - [ ] Timeout, retry, dan deduplikasi berjalan dan terdokumentasi di demo
@@ -168,7 +168,7 @@ Prima terbesar ≤ 10.000.000 adalah **9.999.991**.
 | Risiko | Dampak | Mitigasi |
 |--------|--------|----------|
 | GIL Python membuat thread dalam satu proses worker tidak paralel | Speedup tidak terukur | Setiap worker = **proses/container terpisah**, satu chunk berjalan per worker pada satu waktu |
-| Jumlah core mesin < jumlah worker | Speedup jenuh | Catat jumlah core, batasi CPU per container, jelaskan di analisis |
+| Jumlah core mesin < jumlah worker | Speedup jenuh | Catat jumlah core dan jelaskan di analisis |
 | Algoritma sieve terlalu cepat sehingga overhead RPC mendominasi | Speedup tampak buruk | Pakai mode `trial` untuk benchmark speedup; sieve dipakai sebagai verifikator |
 | Beban tidak merata antar chunk (angka besar lebih mahal) | Worker menganggur | Pembagian dinamis berbasis antrian, chunk kecil |
 | Worker mati meninggalkan chunk menggantung | Job macet | Heartbeat + deadline + reassign |
@@ -181,6 +181,6 @@ Prima terbesar ≤ 10.000.000 adalah **9.999.991**.
 |---------|-------|--------|
 | A | `.proto`, master (job, chunk queue, agregasi, dedup) | modul master, uji unit |
 | B | Worker, algoritma, heartbeat, klien CLI | modul worker, client |
-| C | Containerisasi, benchmark, grafik, laporan, video | compose, skrip benchmark, laporan |
+| C | Deployment dua laptop, benchmark, grafik, laporan, video | skrip manual, skrip benchmark, laporan |
 
 Bila hanya 2 orang, gabungkan B dan C; bila 3 orang, semua anggota tetap wajib mengerjakan minimal satu modul kode agar riwayat commit merata.
