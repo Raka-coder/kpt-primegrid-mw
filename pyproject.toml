@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "primegrid"
+version = "0.1.0"
+description = "Master-worker gRPC prime-counting system"
+requires-python = ">=3.10"
+dependencies = [
+  "grpcio==1.85.1",
+  "grpcio-tools==1.85.1",
+  "protobuf==7.36.2",
+]
+
+[project.scripts]
+primegrid-master = "primegrid.master.__main__:main"
+primegrid-worker = "primegrid.worker.__main__:main"
+primegrid-client = "primegrid.client.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+markers = [
+  "slow: integration or benchmark-style tests",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

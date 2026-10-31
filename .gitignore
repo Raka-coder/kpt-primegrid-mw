@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Project scratch
+.superpowers/
+.env
+*.log
+results/*.csv
+results/*.png
+
+# Build
+build/
+dist/

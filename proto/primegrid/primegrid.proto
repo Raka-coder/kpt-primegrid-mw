@@ -1,0 +1,190 @@
+syntax = "proto3";
+
+package primegrid;
+
+// Status of an asynchronous prime-counting job.
+enum JobStatus {
+  JOB_STATUS_UNSPECIFIED = 0;
+  JOB_STATUS_PENDING = 1;
+  JOB_STATUS_RUNNING = 2;
+  JOB_STATUS_COMPLETED = 3;
+  JOB_STATUS_FAILED = 4;
+  JOB_STATUS_CANCELLED = 5;
+}
+
+// Liveness status of a worker as seen by the master.
+enum WorkerStatus {
+  WORKER_STATUS_UNSPECIFIED = 0;
+  WORKER_STATUS_ALIVE = 1;
+  WORKER_STATUS_DEAD = 2;
+}
+
+// Prime-counting algorithm selected by the client.
+enum AlgorithmMode {
+  ALGORITHM_MODE_UNSPECIFIED = 0;
+  ALGORITHM_MODE_SIEVE = 1;
+  ALGORITHM_MODE_TRIAL = 2;
+}
+
+// Client request to create a job. request_id is the idempotency key and must be
+// reused when the client retries this call.
+message SubmitJobRequest {
+  string request_id = 1;
+  int64 start = 2;
+  int64 end = 3;
+  int64 chunk_size = 4;
+  AlgorithmMode mode = 5;
+}
+
+message SubmitJobResponse {
+  string job_id = 1;
+  bool deduplicated = 2;
+  JobStatus status = 3;
+}
+
+message GetJobStatusRequest {
+  string job_id = 1;
+}
+
+// Shared progress snapshot used by status and streaming responses.
+message JobProgress {
+  string job_id = 1;
+  JobStatus status = 2;
+  int32 total_chunks = 3;
+  int32 done_chunks = 4;
+  int64 prime_count = 5;
+  int64 max_prime = 6;
+  double progress = 7;
+  int64 elapsed_ms = 8;
+  string error = 9;
+}
+
+message GetJobStatusResponse {
+  JobProgress progress = 1;
+}
+
+message WatchJobRequest {
+  string job_id = 1;
+  uint32 update_interval_ms = 2;
+}
+
+// Server-streamed progress updates until the job reaches a terminal state.
+message WatchJobResponse {
+  JobProgress progress = 1;
+}
+
+message GetResultRequest {
+  string job_id = 1;
+}
+
+message WorkerStat {
+  string worker_id = 1;
+  int32 chunks_done = 2;
+  int64 compute_ms = 3;
+}
+
+message GetResultResponse {
+  string job_id = 1;
+  JobStatus status = 2;
+  int32 total_chunks = 3;
+  int32 done_chunks = 4;
+  int64 prime_count = 5;
+  int64 max_prime = 6;
+  int64 elapsed_ms = 7;
+  repeated WorkerStat per_worker_stats = 8;
+  string error = 9;
+}
+
+message CancelJobRequest {
+  string job_id = 1;
+}
+
+message CancelJobResponse {
+  string job_id = 1;
+  bool cancelled = 2;
+  JobStatus status = 3;
+}
+
+message ListWorkersRequest {}
+
+message WorkerInfo {
+  string worker_id = 1;
+  string address = 2;
+  int32 cores = 3;
+  WorkerStatus status = 4;
+  int64 last_heartbeat_ms = 5;
+  int32 chunks_done = 6;
+  int64 compute_ms = 7;
+}
+
+message ListWorkersResponse {
+  repeated WorkerInfo workers = 1;
+}
+
+// Workers call this at startup; repeated calls upsert the worker entry.
+message RegisterWorkerRequest {
+  string worker_id = 1;
+  string address = 2;
+  int32 cores = 3;
+}
+
+message RegisterWorkerResponse {
+  bool accepted = 1;
+  int64 heartbeat_interval_ms = 2;
+}
+
+message HeartbeatRequest {
+  string worker_id = 1;
+  int32 active_chunks = 2;
+}
+
+message HeartbeatResponse {
+  bool acknowledged = 1;
+  bool should_stop = 2;
+}
+
+// Master-to-worker request. The operation is pure and safe to retry.
+message ProcessChunkRequest {
+  string job_id = 1;
+  int32 chunk_id = 2;
+  int64 start = 3;
+  int64 end = 4;
+  AlgorithmMode mode = 5;
+}
+
+message ProcessChunkResponse {
+  string job_id = 1;
+  int32 chunk_id = 2;
+  int64 prime_count = 3;
+  int64 max_prime = 4;
+  int64 compute_ms = 5;
+  bool success = 6;
+  string error = 7;
+}
+
+message PingRequest {
+  string worker_id = 1;
+}
+
+message PingResponse {
+  bool healthy = 1;
+  string worker_id = 2;
+}
+
+// API used by clients and workers to coordinate jobs.
+service MasterService {
+  rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
+  rpc GetJobStatus(GetJobStatusRequest) returns (GetJobStatusResponse);
+  rpc WatchJob(WatchJobRequest) returns (stream WatchJobResponse);
+  rpc GetResult(GetResultRequest) returns (GetResultResponse);
+  rpc CancelJob(CancelJobRequest) returns (CancelJobResponse);
+  rpc ListWorkers(ListWorkersRequest) returns (ListWorkersResponse);
+  rpc RegisterWorker(RegisterWorkerRequest) returns (RegisterWorkerResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+// API exposed by every worker and consumed by the master.
+service WorkerService {
+  rpc ProcessChunk(ProcessChunkRequest) returns (ProcessChunkResponse);
+  rpc Ping(PingRequest) returns (PingResponse);
+}

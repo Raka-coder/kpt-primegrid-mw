@@ -1,0 +1,1 @@
+"""Master coordinator implementation."""
