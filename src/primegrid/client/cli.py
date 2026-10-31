@@ -28,7 +28,19 @@ def _status_name(status: int) -> str:
 
 
 def _add_connection_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--master", help="master address host:port")
+    parser.add_argument(
+        "--master-ip",
+        help="master IP or hostname (env PRIMEGRID_MASTER_IP)",
+    )
+    parser.add_argument(
+        "--master-port",
+        type=int,
+        help="master port (env PRIMEGRID_MASTER_PORT, default 50050)",
+    )
+    parser.add_argument(
+        "--master",
+        help="legacy combined master address host:port; overrides --master-ip",
+    )
     parser.add_argument("--rpc-timeout", type=float, help="unary RPC deadline in seconds")
     parser.add_argument("--job-timeout", type=float, help="maximum wait for a job")
     parser.add_argument("--log-level", help="DEBUG, INFO, WARNING, ERROR")
@@ -72,6 +84,8 @@ def build_parser() -> argparse.ArgumentParser:
 def _client_from_args(args: argparse.Namespace) -> MasterClient:
     config = load_client_config(
         master_address=args.master,
+        master_ip=args.master_ip,
+        master_port=args.master_port,
         rpc_deadline=args.rpc_timeout,
         job_timeout=args.job_timeout,
         log_level=args.log_level,

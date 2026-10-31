@@ -10,6 +10,7 @@ import grpc
 from primegrid import primegrid_pb2_grpc as rpc
 from primegrid.common.config import WorkerConfig
 from primegrid.common.logging import get_logger
+from primegrid.common.network import detect_local_ip, format_address, parse_address
 from primegrid.worker.registrar import WorkerRegistrar
 from primegrid.worker.servicer import WorkerServicer
 
@@ -29,11 +30,15 @@ class WorkerServer:
         self.port = self._server.add_insecure_port(f"{config.host}:{config.port}")
         if self.port == 0:
             raise RuntimeError(f"could not bind worker server on {config.host}:{config.port}")
+        advertise_host = config.advertise_host
+        if not advertise_host:
+            master_host, master_port = parse_address(config.master_address)
+            advertise_host = detect_local_ip(master_host, master_port)
         advertise_port = config.advertise_port or self.port
-        advertised_address = f"{config.advertise_host}:{advertise_port}"
+        self.advertised_address = format_address(advertise_host, advertise_port)
         self.registrar = WorkerRegistrar(
             config,
-            advertised_address,
+            self.advertised_address,
             lambda: self.servicer.active_chunks,
         )
         self._started = False

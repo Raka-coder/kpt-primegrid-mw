@@ -7,6 +7,7 @@ import socket
 from dataclasses import dataclass, replace
 from typing import TypeVar
 
+from primegrid.common.network import format_address, parse_address
 from primegrid.common.retry import RetryPolicy
 
 T = TypeVar("T")
@@ -107,10 +108,10 @@ class WorkerConfig:
     worker_id: str = ""
     host: str = "0.0.0.0"
     port: int = 50061
-    advertise_host: str = "localhost"
-    advertise_port: int = 50061
+    advertise_host: str = ""
+    advertise_port: int = 0
     cores: int = 1
-    master_address: str = "localhost:50050"
+    master_address: str = ""
     heartbeat_interval: float = 2.0
     rpc_deadline: float = 3.0
     max_retries: int = 3
@@ -137,6 +138,9 @@ class WorkerConfig:
         _positive("rpc_deadline", self.rpc_deadline)
         _positive("max_retries", self.max_retries)
         _positive("max_workers", self.max_workers)
+        if not self.master_address:
+            raise ValueError("master address is required; use --master-ip or PRIMEGRID_MASTER_IP")
+        parse_address(self.master_address)
         if not 0.0 <= self.fault_delay_probability <= 1.0:
             raise ValueError("FAULT_DELAY_PROBABILITY must be between 0 and 1")
         if not 0.0 <= self.fault_error_probability <= 1.0:
@@ -148,16 +152,12 @@ class WorkerConfig:
     def retry_policy(self) -> RetryPolicy:
         return RetryPolicy(self.max_retries, self.backoff_base, self.backoff_max)
 
-    @property
-    def advertised_address(self) -> str:
-        return f"{self.advertise_host}:{self.advertise_port}"
-
 
 @dataclass(frozen=True)
 class ClientConfig:
     """Client endpoint, deadline, retry, and streaming settings."""
 
-    master_address: str = "localhost:50050"
+    master_address: str = ""
     rpc_deadline: float = 3.0
     job_timeout: float = 3600.0
     max_retries: int = 3
@@ -168,7 +168,8 @@ class ClientConfig:
 
     def __post_init__(self) -> None:
         if not self.master_address:
-            raise ValueError("master address must not be empty")
+            raise ValueError("master address is required; use --master-ip or PRIMEGRID_MASTER_IP")
+        parse_address(self.master_address)
         _positive("rpc_deadline", self.rpc_deadline)
         _positive("job_timeout", self.job_timeout)
         _positive("max_retries", self.max_retries)
@@ -208,16 +209,45 @@ def load_master_config(**overrides: object) -> MasterConfig:
     return MasterConfig(**values)  # type: ignore[arg-type]
 
 
+def _resolve_master_address(
+    master_address: object | None,
+    master_ip: object | None,
+    master_port: object | None,
+) -> str:
+    explicit = str(master_address).strip() if master_address else ""
+    env_address = os.environ.get("PRIMEGRID_MASTER_ADDRESS", "").strip()
+    address = explicit or env_address
+    if address:
+        parse_address(address)
+        return address
+
+    ip = str(master_ip).strip() if master_ip else ""
+    if not ip:
+        ip = os.environ.get("PRIMEGRID_MASTER_IP", "").strip()
+    if not ip:
+        raise ValueError("master IP is required; use --master-ip or PRIMEGRID_MASTER_IP")
+
+    port = master_port if master_port is not None else _env("PRIMEGRID_MASTER_PORT", 50050)
+    try:
+        port_number = int(port)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"master port must be an integer, got {port!r}") from exc
+    return format_address(ip, port_number)
+
+
 def load_worker_config(**overrides: object) -> WorkerConfig:
     """Load worker configuration from environment, then apply CLI overrides."""
+    master_address = overrides.pop("master_address", None)
+    master_ip = overrides.pop("master_ip", None)
+    master_port = overrides.pop("master_port", None)
     values: dict[str, object] = {
         "worker_id": _env("PRIMEGRID_WORKER_ID", ""),
         "host": _env("PRIMEGRID_WORKER_HOST", "0.0.0.0"),
         "port": _env("PRIMEGRID_WORKER_PORT", 50061),
-        "advertise_host": _env("PRIMEGRID_WORKER_ADVERTISE_HOST", "localhost"),
-        "advertise_port": _env("PRIMEGRID_WORKER_ADVERTISE_PORT", 50061),
+        "advertise_host": _env("PRIMEGRID_WORKER_ADVERTISE_HOST", ""),
+        "advertise_port": _env("PRIMEGRID_WORKER_ADVERTISE_PORT", 0),
         "cores": _env("PRIMEGRID_WORKER_CORES", 1),
-        "master_address": _env("PRIMEGRID_MASTER_ADDRESS", "localhost:50050"),
+        "master_address": _resolve_master_address(master_address, master_ip, master_port),
         "heartbeat_interval": _env("PRIMEGRID_HEARTBEAT_INTERVAL", 2.0),
         "rpc_deadline": _env("PRIMEGRID_RPC_DEADLINE", 3.0),
         "max_retries": _env("PRIMEGRID_MAX_RETRIES", 3),
@@ -236,8 +266,11 @@ def load_worker_config(**overrides: object) -> WorkerConfig:
 
 def load_client_config(**overrides: object) -> ClientConfig:
     """Load client configuration from environment, then apply CLI overrides."""
+    master_address = overrides.pop("master_address", None)
+    master_ip = overrides.pop("master_ip", None)
+    master_port = overrides.pop("master_port", None)
     values: dict[str, object] = {
-        "master_address": _env("PRIMEGRID_MASTER_ADDRESS", "localhost:50050"),
+        "master_address": _resolve_master_address(master_address, master_ip, master_port),
         "rpc_deadline": _env("PRIMEGRID_RPC_DEADLINE", 3.0),
         "job_timeout": _env("PRIMEGRID_JOB_TIMEOUT", 3600.0),
         "max_retries": _env("PRIMEGRID_MAX_RETRIES", 3),
