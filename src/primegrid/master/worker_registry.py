@@ -122,10 +122,7 @@ class WorkerRegistry:
 
     def has_alive_workers(self) -> bool:
         with self._lock:
-            return any(
-                record.status is pb.WORKER_STATUS_ALIVE
-                for record in self._workers.values()
-            )
+            return any(record.status is pb.WORKER_STATUS_ALIVE for record in self._workers.values())
 
     def record_chunk(self, worker_id: str, compute_ms: int) -> None:
         with self._lock:
@@ -144,9 +141,7 @@ class WorkerRegistry:
                     address=record.address,
                     cores=record.cores,
                     status=record.status,
-                    last_heartbeat_ms=max(
-                        0, int((now - record.last_heartbeat) * 1000)
-                    ),
+                    last_heartbeat_ms=max(0, int((now - record.last_heartbeat) * 1000)),
                     chunks_done=record.chunks_done,
                     compute_ms=record.compute_ms,
                 )

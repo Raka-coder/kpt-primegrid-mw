@@ -6,7 +6,6 @@ import logging
 import sys
 from typing import Any, TextIO
 
-
 _CONTEXT_FIELDS = ("job_id", "chunk_id", "worker_id", "duration_ms")
 _FORMAT = (
     "%(asctime)s level=%(levelname)s component=%(component)s "
@@ -52,9 +51,7 @@ def configure_logging(
     if not already_configured:
         handler = logging.StreamHandler(stream or sys.stderr)
         handler._primegrid_structured = True  # type: ignore[attr-defined]
-        handler.setFormatter(
-            _StructuredFormatter(_FORMAT, datefmt="%Y-%m-%dT%H:%M:%S%z")
-        )
+        handler.setFormatter(_StructuredFormatter(_FORMAT, datefmt="%Y-%m-%dT%H:%M:%S%z"))
         root.addHandler(handler)
     root.setLevel(getattr(logging, level.upper(), logging.INFO))
 

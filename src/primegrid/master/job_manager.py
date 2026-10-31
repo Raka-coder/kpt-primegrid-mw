@@ -6,9 +6,9 @@ import queue
 import threading
 import time
 import uuid
-from dataclasses import dataclass, field
+from collections.abc import Iterable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Iterable
 
 from primegrid import primegrid_pb2 as pb
 from primegrid.common.config import MasterConfig
@@ -102,10 +102,7 @@ class Job:
         self.end = end
         self.mode = mode
         self.chunk_size = chunk_size
-        self.chunks = [
-            Chunk(chunk_id=index, start=a, end=b)
-            for index, (a, b) in enumerate(ranges)
-        ]
+        self.chunks = [Chunk(chunk_id=index, start=a, end=b) for index, (a, b) in enumerate(ranges)]
         self._chunk_attempt_limit = chunk_attempt_limit
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
@@ -382,9 +379,7 @@ class JobManager:
         if normalized_mode not in ("sieve", "trial"):
             raise ValueError(f"invalid mode: {mode!r}")
         if end - start + 1 > self.config.max_range:
-            raise ValueError(
-                f"range exceeds configured maximum of {self.config.max_range}"
-            )
+            raise ValueError(f"range exceeds configured maximum of {self.config.max_range}")
         effective_chunk_size = chunk_size or self.config.default_chunk_size
         ranges = split_range(start, end, effective_chunk_size)
         if len(ranges) > self.config.max_chunks:
@@ -509,9 +504,7 @@ class JobManager:
             return []
         failed: list[str] = []
         for job in self.jobs_from_snapshot():
-            if job.fail(
-                "no live workers available before the job stall timeout"
-            ):
+            if job.fail("no live workers available before the job stall timeout"):
                 failed.append(job.job_id)
         return failed
 

@@ -9,7 +9,6 @@ from typing import TypeVar
 
 from primegrid.common.retry import RetryPolicy
 
-
 T = TypeVar("T")
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
@@ -67,6 +66,7 @@ class MasterConfig:
     max_range: int = 10_000_000
     max_chunks: int = 100_000
     job_stall_timeout: float = 600.0
+    default_watch_interval_ms: int = 250
     log_level: str = "INFO"
     shutdown_grace: float = 5.0
 
@@ -87,6 +87,7 @@ class MasterConfig:
         _positive("max_range", self.max_range)
         _positive("max_chunks", self.max_chunks)
         _positive("job_stall_timeout", self.job_stall_timeout)
+        _positive("default_watch_interval_ms", self.default_watch_interval_ms)
         if self.max_range < self.default_chunk_size:
             raise ValueError("MAX_RANGE must be at least DEFAULT_CHUNK_SIZE")
 
@@ -199,6 +200,7 @@ def load_master_config(**overrides: object) -> MasterConfig:
         "max_range": _env("PRIMEGRID_MAX_RANGE", 10_000_000),
         "max_chunks": _env("PRIMEGRID_MAX_CHUNKS", 100_000),
         "job_stall_timeout": _env("PRIMEGRID_JOB_STALL_TIMEOUT", 600.0),
+        "default_watch_interval_ms": _env("PRIMEGRID_WATCH_INTERVAL_MS", 250),
         "log_level": _env("PRIMEGRID_LOG_LEVEL", "INFO"),
         "shutdown_grace": _env("PRIMEGRID_SHUTDOWN_GRACE", 5.0),
     }

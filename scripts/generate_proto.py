@@ -6,7 +6,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 PROTO_ROOT = ROOT / "proto"
 PROTO_FILE = PROTO_ROOT / "primegrid" / "primegrid.proto"

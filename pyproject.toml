@@ -17,6 +17,7 @@ dependencies = [
 primegrid-master = "primegrid.master.__main__:main"
 primegrid-worker = "primegrid.worker.__main__:main"
 primegrid-client = "primegrid.client.cli:main"
+primegrid-bench = "primegrid.client.benchmark:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
@@ -27,7 +28,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-ra"
+addopts = "-ra -m 'not slow'"
 markers = [
   "slow: integration or benchmark-style tests",
 ]
@@ -35,3 +36,13 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+extend-exclude = [
+  "src/primegrid/primegrid_pb2.py",
+  "src/primegrid/primegrid_pb2_grpc.py",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM", "RUF", "G"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/primegrid/client/benchmark.py" = ["SIM115"]
